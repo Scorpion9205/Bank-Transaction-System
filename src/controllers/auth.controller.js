@@ -1,5 +1,6 @@
 import userModel from "../models/user.model.js";
 import jwt from 'jsonwebtoken'
+import { sendRegistrationEmail } from "../services/email.service.js";
 
 // user register controller
 export const userRegisterController = async (req, res) => {
@@ -46,6 +47,8 @@ export const userRegisterController = async (req, res) => {
             },
         });
 
+        await sendRegistrationEmail(user.email,user.name)
+
 
 
     } catch (error) {
@@ -56,6 +59,7 @@ export const userRegisterController = async (req, res) => {
         });
 
     }
+
 
 }
 
