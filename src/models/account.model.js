@@ -4,9 +4,9 @@ import mongoose from "mongoose"
 const accountSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
+        ref: "User",
         required: [ true, "Account must be associated with a user" ],
-        index: true
+        index: true //for fast searching
     },
     status: {
         type: String,
@@ -24,3 +24,10 @@ const accountSchema = new mongoose.Schema({
 }, {
     timestamps: true
 })
+
+// compound indexing
+accountSchema.index({user:1,status:1})
+
+ const accountModel = mongoose.model("account",accountSchema)
+
+ export default accountModel;
