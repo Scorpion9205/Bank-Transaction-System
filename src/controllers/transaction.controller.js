@@ -89,6 +89,70 @@ export const createTransaction = async(req,res)=>{
     }
 
     // deriving senders balance from ledger
-    
+     const balance = await fromUserAccount.getBalance()
+
+    if (balance < amount) {
+        return res.status(400).json({
+            message: `Insufficient balance. Current balance is ${balance}. Requested amount is ${amount}`
+        })
+    }
+  let transaction;
+  try{
+
+    // creating session 
+    const session = await mongoose().startsession()
+    session.startTransaction()
+    transaction = (await transactionModel.create([ {
+            fromAccount,
+            toAccount,
+            amount,
+            idempotencyKey,
+            status: "PENDING"
+        } ], { session }))[ 0 ]
+
+        const debitLedgerEntry = await ledgerModel.create([ {
+            account: fromAccount,
+            amount: amount,
+            transaction: transaction._id,
+            type: "DEBIT"
+        } ], { session })
+
+        await (() => {
+            return new Promise((resolve) => setTimeout(resolve, 15 * 1000));
+        })()
+
+        const creditLedgerEntry = await ledgerModel.create([ {
+            account: toAccount,
+            amount: amount,
+            transaction: transaction._id,
+            type: "CREDIT"
+        } ], { session })
+
+        await transactionModel.findOneAndUpdate(
+            { _id: transaction._id },
+            { status: "COMPLETED" },
+            { session }
+        )
+
+
+        await session.commitTransaction()
+        session.endSession()
+    } catch (error) {
+
+        return res.status(400).json({
+            message: "Transaction is Pending due to some issue, please retry after sometime",
+        })
+
+    }
+    //   sending mail
+
+     await emailService.sendTransactionEmail(req.user.email, req.user.name, amount, toAccount)
+
+    return res.status(201).json({
+        message: "Transaction completed successfully",
+        transaction: transaction
+    })
+
+
 
 }
